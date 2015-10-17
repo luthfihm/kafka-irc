@@ -73,10 +73,21 @@ rl.on('line', function(line){
 	//Leave channel
 	} else if (line.indexOf('/LEAVE') == 0){
 	    var channel = line.substr(7);
-	    
+        if (channels.indexOf(channel) != -1) {
+        	consumer.removeTopics([channel], function (err, removed) {
+        		console.log("You have left the channel");
+        		var payloads = [
+		        	{ topic: channel, messages: "@" + channel + " : " + username + " has left."}
+			    ];
+			    producer.send(payloads, function (err, data) {});
+			});
+        } else {
+        	console.log("Failed to leave channel!");
+        }
 	//Change nikcname
 	} else if (line.indexOf('/NICK') == 0){
-	    
+	    username = line.substr(6);
+        console.log("Welcome, " + username);
 	//Send message to a channel
 	} else if (line.indexOf('@') == 0){
 	    var i = line.indexOf(' ');
@@ -87,9 +98,7 @@ rl.on('line', function(line){
         	var payloads = [
 		        { topic: channel, messages: "@" + channel + " " + username + " : " + msg }
 		    ];
-		    producer.send(payloads, function (err, data) {
-		        console.log(data);
-		    });
+		    producer.send(payloads, function (err, data) {});
         } else {
         	console.log("You are not member of this channel!");
         }
@@ -100,7 +109,14 @@ rl.on('line', function(line){
 		process.exit(0);
 	//Broadcast message
 	} else {
-	    
+	    if ((line != '') && (channels.length > 0)) {
+	    	var payloads = [];
+        	for (var i = 0; i < channels.length; i++) {
+        		var payload = { topic: channels[i], messages: "@" + channels[i] + " " + username + " : " + line };
+        		payloads.push(payload);
+        	};
+        	producer.send(payloads, function (err, data) {});
+        }
 	}
 });
 function makeid()
